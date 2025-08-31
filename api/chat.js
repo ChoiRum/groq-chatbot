@@ -1,7 +1,9 @@
+import Groq from 'groq-sdk';
+import cors from 'cors';
 
-require('dotenv').config();
-const Groq = require('groq-sdk');
-const cors = require('cors');
+// Vercel 환경에서는 .env를 사용하지 않지만, 로컬 테스트를 위해 dotenv를 유지할 수 있습니다.
+// import dotenv from 'dotenv';
+// dotenv.config();
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY
@@ -10,17 +12,19 @@ const groq = new Groq({
 // CORS 미들웨어 초기화
 const corsMiddleware = cors();
 
-const handler = async (req, res) => {
+// Vercel의 서버리스 함수는 req, res를 인자로 받습니다.
+const handler = (req, res) => {
     // CORS 미들웨어를 수동으로 실행
     corsMiddleware(req, res, async () => {
         if (req.method !== 'POST') {
-            return res.status(405).send('Method Not Allowed');
+            res.setHeader('Allow', ['POST']);
+            return res.status(405).end(`Method ${req.method} Not Allowed`);
         }
 
         const { messages } = req.body;
 
         if (!messages) {
-            return res.status(400).send('Messages are required');
+            return res.status(400).json({ error: 'Messages are required' });
         }
 
         try {
@@ -37,9 +41,9 @@ const handler = async (req, res) => {
             res.status(200).json(chatCompletion.choices[0].message);
         } catch (error) {
             console.error('Error with Groq API:', error);
-            res.status(500).send('Internal Server Error');
+            res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 };
 
-module.exports = handler;
+export default handler;
